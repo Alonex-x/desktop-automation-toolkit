@@ -1,0 +1,32 @@
+{
+  "rules": [
+    {
+      "name": "Eliminar torrents viejos",
+      "description": "Elimina cualquier archivo .torrent que encuentre.",
+      "condition": {
+        "type": "extension",
+        "value": ".torrent"
+      },
+      "action": "delete"
+    },
+    {
+      "name": "Mover imágenes a 'Fotos'",
+      "description": "Mueve todos los archivos .jpg y .png a una carpeta llamada Fotos.",
+      "condition": {
+        "type": "extension",
+        "value": [".jpg", ".jpeg", ".png", ".gif"]
+      },
+      "action": "move",
+      "destination": "Imagenes"
+    },
+    {
+      "name": "Ignorar archivos de sistema",
+      "description": "No procesa archivos .sys o .dll.",
+      "condition": {
+        "type": "extension",
+        "value": [".sys", ".dll"]
+      },
+      "action": "ignore"
+    }
+  ]
+}
