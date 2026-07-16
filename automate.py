@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Desktop Automation Toolkit - Automatización de tareas de archivos para desarrolladores y sysadmins.
+Desktop Automation Toolkit - File automation for developers and sysadmins.
 """
 import os
 import shutil
@@ -10,7 +10,7 @@ import json
 import subprocess
 from datetime import datetime
 
-# Configuración de logging
+# Logging configuration
 LOG_FILE = os.path.expanduser("~/.automate_toolkit.log")
 logging.basicConfig(
     level=logging.INFO,
@@ -25,21 +25,21 @@ RULES_FILENAME = "automate_rules.json"
 
 
 def get_rules_path():
-    """Devuelve la ruta esperada del archivo de reglas, junto al script."""
+    """Returns the expected path for the rules file, next to this script."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, RULES_FILENAME)
 
 
 def load_rules():
     """
-    Carga las reglas desde automate_rules.json.
-    Si el archivo no existe o está mal formado, retorna una lista vacía
-    y se conserva el comportamiento por defecto del script.
+    Load rules from automate_rules.json.
+    If the file doesn't exist or is malformed, returns an empty list
+    and falls back to default behavior.
     """
     rules_path = get_rules_path()
 
     if not os.path.exists(rules_path):
-        logging.info(f"No se encontró {RULES_FILENAME}. Usando comportamiento por defecto.")
+        logging.info(f"{RULES_FILENAME} not found. Using default behavior.")
         return []
 
     try:
@@ -47,17 +47,17 @@ def load_rules():
             data = json.load(f)
         rules = data.get("rules", [])
         if not isinstance(rules, list):
-            raise ValueError("La clave 'rules' debe ser una lista.")
-        logging.info(f"Se cargaron {len(rules)} regla(s) desde {RULES_FILENAME}.")
+            raise ValueError("The 'rules' key must be a list.")
+        logging.info(f"Loaded {len(rules)} rule(s) from {RULES_FILENAME}.")
         return rules
     except (json.JSONDecodeError, ValueError, OSError) as e:
-        logging.warning(f"No se pudo leer {RULES_FILENAME} ({e}). Usando comportamiento por defecto.")
+        logging.warning(f"Could not read {RULES_FILENAME} ({e}). Using default behavior.")
         return []
 
 
 def _extension_matches(filename, value):
-    """Compara la extensión del archivo contra un valor (string o lista de strings)."""
-    ext = os.path.splitext(filename)[1].lower()  # incluye el punto, ej: ".torrent"
+    """Checks if the file extension matches a value (string or list of strings)."""
+    ext = os.path.splitext(filename)[1].lower()
     if isinstance(value, list):
         return ext in [v.lower() for v in value]
     return ext == value.lower()
@@ -65,8 +65,8 @@ def _extension_matches(filename, value):
 
 def match_rule(filename, rules):
     """
-    Evalúa las reglas en orden y retorna la primera que coincida con el archivo,
-    o None si ninguna coincide.
+    Evaluates rules in order and returns the first one that matches the file,
+    or None if no rule matches.
     """
     for rule in rules:
         condition = rule.get("condition", {})
@@ -76,84 +76,84 @@ def match_rule(filename, rules):
             value = condition.get("value")
             if value and _extension_matches(filename, value):
                 return rule
-        # Punto de extensión: aquí se pueden añadir más tipos de condición
-        # (ej. "name_contains", "size_greater_than") en el futuro.
+        # Extension point: more condition types can be added here
+        # (e.g. "name_contains", "size_greater_than") in the future.
 
     return None
 
 
 def apply_rule_action(rule, file_path, base_path, dry_run=False):
     """
-    Ejecuta la acción definida en una regla sobre un archivo.
-    Retorna True si el archivo fue "consumido" por la regla (delete/move/ignore),
-    en cuyo caso el llamador no debe aplicar el comportamiento por defecto.
+    Executes the action defined in a rule on a file.
+    Returns True if the file was "consumed" by the rule (delete/move/ignore),
+    meaning the caller should skip the default behavior.
     """
     action = rule.get("action")
-    rule_name = rule.get("name", "(sin nombre)")
+    rule_name = rule.get("name", "(unnamed)")
 
     if action == "delete":
         if dry_run:
-            print(f"[DRY RUN] Regla '{rule_name}' eliminaría: {file_path}")
+            print(f"[DRY RUN] Rule '{rule_name}' would delete: {file_path}")
         else:
             os.remove(file_path)
-            logging.info(f"Regla '{rule_name}': eliminado {file_path}")
+            logging.info(f"Rule '{rule_name}': deleted {file_path}")
         return True
 
     elif action == "move":
         destination = rule.get("destination")
         if not destination:
-            logging.error(f"Regla '{rule_name}': acción 'move' sin 'destination' definido. Se omite el archivo.")
+            logging.error(f"Rule '{rule_name}': 'move' action without 'destination'. Skipping file.")
             return True
         dest_dir = os.path.join(base_path, destination)
         try:
             if dry_run:
-                print(f"[DRY RUN] Regla '{rule_name}' movería {file_path} -> {dest_dir}/")
+                print(f"[DRY RUN] Rule '{rule_name}' would move {file_path} -> {dest_dir}/")
             else:
                 os.makedirs(dest_dir, exist_ok=True)
                 shutil.move(file_path, os.path.join(dest_dir, os.path.basename(file_path)))
-                logging.info(f"Regla '{rule_name}': movido {file_path} -> {dest_dir}/")
+                logging.info(f"Rule '{rule_name}': moved {file_path} -> {dest_dir}/")
         except OSError as e:
-            logging.error(f"Regla '{rule_name}': no se pudo mover {file_path} ({e}). Se omite el archivo.")
+            logging.error(f"Rule '{rule_name}': could not move {file_path} ({e}). Skipping file.")
         return True
 
     elif action == "ignore":
         if dry_run:
-            print(f"[DRY RUN] Regla '{rule_name}' ignora: {file_path}")
+            print(f"[DRY RUN] Rule '{rule_name}' ignores: {file_path}")
         else:
-            logging.info(f"Regla '{rule_name}': ignorado {file_path}")
+            logging.info(f"Rule '{rule_name}': ignored {file_path}")
         return True
 
     else:
-        logging.warning(f"Regla '{rule_name}': acción desconocida '{action}'. Se ignora la regla.")
+        logging.warning(f"Rule '{rule_name}': unknown action '{action}'. Ignoring this rule.")
         return False
 
 
 def setup_argparse():
     parser = argparse.ArgumentParser(description="Desktop Automation Toolkit")
-    subparsers = parser.add_subparsers(dest="command", help="Comandos disponibles")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Comando: clean
-    clean_parser = subparsers.add_parser("clean", help="Eliminar archivos temporales")
-    clean_parser.add_argument("path", help="Directorio a limpiar")
-    clean_parser.add_argument("--days", type=int, default=30, help="Eliminar archivos más antiguos de N días (default: 30)")
-    clean_parser.add_argument("--dry-run", action="store_true", help="Solo mostrar lo que se eliminaría sin borrar realmente")
+    # clean command
+    clean_parser = subparsers.add_parser("clean", help="Delete old temporary files")
+    clean_parser.add_argument("path", help="Directory to clean")
+    clean_parser.add_argument("--days", type=int, default=30, help="Delete files older than N days (default: 30)")
+    clean_parser.add_argument("--dry-run", action="store_true", help="Only show what would be deleted without actually removing anything")
 
-    # Comando: organize
-    org_parser = subparsers.add_parser("organize", help="Organizar archivos por extensión")
-    org_parser.add_argument("path", help="Directorio a organizar")
-    org_parser.add_argument("--dry-run", action="store_true", help="Solo mostrar lo que se movería sin reorganizar realmente")
+    # organize command
+    org_parser = subparsers.add_parser("organize", help="Organize files by extension")
+    org_parser.add_argument("path", help="Directory to organize")
+    org_parser.add_argument("--dry-run", action="store_true", help="Only show what would be moved without actually reorganizing anything")
 
-    # Comando: backup
-    backup_parser = subparsers.add_parser("backup", help="Respaldar un directorio")
-    backup_parser.add_argument("source", help="Directorio origen")
-    backup_parser.add_argument("destination", help="Directorio destino del respaldo")
-    backup_parser.add_argument("--compress", action="store_true", help="Crear archivo comprimido en lugar de copiar")
+    # backup command
+    backup_parser = subparsers.add_parser("backup", help="Backup a directory")
+    backup_parser.add_argument("source", help="Source directory")
+    backup_parser.add_argument("destination", help="Backup destination directory")
+    backup_parser.add_argument("--compress", action="store_true", help="Create a compressed archive instead of copying")
 
     return parser.parse_args()
 
 
 def clean_temp_files(path, days=30, dry_run=False):
-    """Elimina archivos temporales y logs antiguos, respetando reglas personalizadas."""
+    """Delete old temporary and log files, respecting custom rules."""
     rules = load_rules()
     now = datetime.now().timestamp()
     deleted_count = 0
@@ -162,29 +162,29 @@ def clean_temp_files(path, days=30, dry_run=False):
         for file in files:
             file_path = os.path.join(root, file)
 
-            # 1. Evaluar reglas personalizadas primero (tienen prioridad).
+            # 1. Evaluate custom rules first (they have priority).
             rule = match_rule(file, rules)
             if rule:
                 consumed = apply_rule_action(rule, file_path, path, dry_run)
                 if consumed:
-                    continue  # La regla ya decidió qué hacer con este archivo.
+                    continue
 
-            # 2. Comportamiento por defecto si ninguna regla aplicó.
+            # 2. Default behavior if no rule matched.
             if file.endswith((".tmp", ".log", ".bak", "~")):
                 file_age = now - os.path.getmtime(file_path)
                 if file_age > days * 86400:
                     if dry_run:
-                        print(f"[DRY RUN] Eliminaría: {file_path}")
+                        print(f"[DRY RUN] Would delete: {file_path}")
                     else:
                         os.remove(file_path)
-                        logging.info(f"Eliminado: {file_path}")
+                        logging.info(f"Deleted: {file_path}")
                         deleted_count += 1
 
-    logging.info(f"Limpieza completada. Archivos eliminados: {deleted_count}")
+    logging.info(f"Cleanup completed. Files deleted: {deleted_count}")
 
 
 def organize_by_extension(path, dry_run=False):
-    """Organiza archivos en subcarpetas por extensión, respetando reglas personalizadas."""
+    """Organize files into subfolders by extension, respecting custom rules."""
     rules = load_rules()
     moved_count = 0
 
@@ -193,39 +193,36 @@ def organize_by_extension(path, dry_run=False):
         if not os.path.isfile(item_path):
             continue
 
-        # 1. Evaluar reglas personalizadas primero (tienen prioridad).
+        # 1. Evaluate custom rules first (they have priority).
         rule = match_rule(item, rules)
         if rule:
             consumed = apply_rule_action(rule, item_path, path, dry_run)
             if consumed:
-                continue  # La regla ya decidió qué hacer con este archivo.
+                continue
 
-        # 2. Comportamiento por defecto si ninguna regla aplicó.
-        ext = item.split(".")[-1].lower() if "." in item else "sin_extension"
+        # 2. Default behavior if no rule matched.
+        ext = item.split(".")[-1].lower() if "." in item else "no_extension"
         dest_dir = os.path.join(path, ext)
         if not dry_run:
             os.makedirs(dest_dir, exist_ok=True)
             shutil.move(item_path, os.path.join(dest_dir, item))
-            logging.info(f"Movido: {item} -> {ext}/")
+            logging.info(f"Moved: {item} -> {ext}/")
         moved_count += 1
 
-    logging.info(f"Organización completada. Archivos movidos: {moved_count}")
+    logging.info(f"Organization completed. Files moved: {moved_count}")
 
 
 def backup_directory(source, destination, compress=False):
-    """Respaldar directorio completo con opción de comprimir. No se ve afectado por las reglas."""
+    """Backup a complete directory. Not affected by custom rules."""
     if compress:
-        # Crear archivo tar.gz
         backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar.gz"
         backup_path = os.path.join(destination, backup_name)
-        # Usamos subprocess.run en lugar de os.system para evitar inyección de comandos
         subprocess.run(["tar", "-czf", backup_path, source], check=True)
-        logging.info(f"Respaldo comprimido creado en: {backup_path}")
+        logging.info(f"Compressed backup created at: {backup_path}")
     else:
-        # Copia recursiva
         dest_dir = os.path.join(destination, os.path.basename(source.rstrip("/")))
         shutil.copytree(source, dest_dir)
-        logging.info(f"Respaldo copiado en: {dest_dir}")
+        logging.info(f"Backup copied to: {dest_dir}")
 
 
 def main():
@@ -237,7 +234,7 @@ def main():
     elif args.command == "backup":
         backup_directory(args.source, args.destination, args.compress)
     else:
-        print("Usa --help para ver los comandos disponibles.")
+        print("Use --help to see available commands.")
 
 
 if __name__ == "__main__":
