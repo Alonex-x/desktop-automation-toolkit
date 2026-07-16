@@ -7,6 +7,7 @@ import shutil
 import argparse
 import logging
 import json
+import subprocess
 from datetime import datetime
 
 # Configuración de logging
@@ -217,7 +218,8 @@ def backup_directory(source, destination, compress=False):
         # Crear archivo tar.gz
         backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar.gz"
         backup_path = os.path.join(destination, backup_name)
-        os.system(f"tar -czf {backup_path} {source}")
+        # Usamos subprocess.run en lugar de os.system para evitar inyección de comandos
+        subprocess.run(["tar", "-czf", backup_path, source], check=True)
         logging.info(f"Respaldo comprimido creado en: {backup_path}")
     else:
         # Copia recursiva
