@@ -122,3 +122,4 @@ The toolkit supports an optional JSON rules engine through an `automate_rules.js
 
 This is part of my self-taught developer portfolio. If you have ideas for new rule types, features, or improvements, pull requests and issues are genuinely welcome. Also, if you need help with automation, scraping, or WordPress, feel free to reach out.
 ```
+
