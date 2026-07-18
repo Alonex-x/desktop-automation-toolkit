@@ -5,7 +5,6 @@ import tarfile
 import pytest
 import automate
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 @pytest.fixture
 def rules_path(tmp_path, monkeypatch):
