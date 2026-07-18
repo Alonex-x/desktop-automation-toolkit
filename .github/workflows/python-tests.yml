@@ -23,4 +23,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
       - name: Ejecutar tests con pytest
-        run: pytest tests/ -v
+        run: |
+          PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ -v
