@@ -132,7 +132,7 @@ class TestApplyRuleActionIgnore:
         assert consumido is True
         assert archivo.exists()
 
-    def test_accion_desconocida_no_consume_el_archivo(self, tmp_path):
+    def test_unknown_action_does_not_consume_file(self, tmp_path):
         archivo = tmp_path / "notas.txt"
         archivo.write_text("contenido")
         regla = {"name": "accion_rara", "action": "teletransportar"}
